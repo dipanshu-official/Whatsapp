@@ -28,7 +28,8 @@ transporter.verify((error, success) => {
 });
 
 export const sendOtpToEmail = async (email, otp) => {
-  console.log("Sending OTP ", email);
+  console.log("otp",otp)
+ 
   try {
     const html = `
     <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">

@@ -1,2 +1,2 @@
-# whatsap
-# Whatsapp
+.env
+node_modules

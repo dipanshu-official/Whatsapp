@@ -1,7 +1,7 @@
 import User from "../models/user.Model.js";
 import otpGenerator from "../utils/otpGenerator.js";
 import responseHandler from "../utils/responseHandler.js";
-import {  sendOtpToEmail } from "../services/emailService.js";
+import { sendOtpToEmail } from "../services/emailService.js";
 import {
   sendOtpToNumber,
   verifyOtpToNumber,
@@ -32,9 +32,10 @@ export const sendOtp = async (req, res) => {
       return responseHandler(res, 400, "Phone number and suffix are required");
     }
     const fullPhoneNumber = `${phoneSuffix}${phoneNumber}`;
-    user = await User.findOne({ phoneNumber });
+    user = await User.findOne({ phoneNumber: fullPhoneNumber });
     if (!user) {
       user = new User({ phoneNumber, phoneSuffix });
+    } else {
     }
     // Send OTP to phone number
     await sendOtpToNumber(fullPhoneNumber);
@@ -52,6 +53,7 @@ export const verifyOtp = async (req, res) => {
   try {
     const { phoneNumber, phoneSuffix, otp, email } = req.body;
     let user;
+    const now = new Date();
 
     if (email) {
       user = await User.findOne({ email });
@@ -59,7 +61,6 @@ export const verifyOtp = async (req, res) => {
         return responseHandler(res, 404, "User not found");
       }
 
-      const now = new Date();
       if (
         !user.emailOtp ||
         String(user.emailOtp).trim() !== String(otp).trim() ||
@@ -72,44 +73,74 @@ export const verifyOtp = async (req, res) => {
       user.emailOtpExpiry = null;
       await user.save();
 
-      console.log("Email OTP verified successfully");
-      return responseHandler(res, 200, "Email OTP verified successfully", {
-        user,
-      });
-    } else {
-      if (!phoneNumber || !phoneSuffix) {
-        return responseHandler(res, 400, "Phone number and suffix are required");
-      }
-
-      const fullPhoneNumber = `${phoneSuffix}${phoneNumber}`;
-      user = await User.findOne({ phoneNumber: fullPhoneNumber });
-      if (!user) {
-        return responseHandler(res, 404, "User not found");
-      }
-
-      const result = await verifyOtpToNumber(fullPhoneNumber, otp);
-      if (!result.valid) {
-        return responseHandler(res, 400, "Invalid or expired OTP");
-      }
-
-      user.isVerified = true;
-      await user.save();
-
       const token = generateToken(user._id);
       res.cookie("auth_token", token, {
         httpOnly: true,
         sameSite: "strict",
-        maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
+        maxAge: 365 * 24 * 60 * 60 * 1000,
       });
 
-      console.log("Phone OTP verified successfully, token generated.");
-      return responseHandler(res, 200, "Phone OTP verified successfully", {
+      console.log("Email OTP verified successfully");
+      return responseHandler(res, 200, "Email OTP verified successfully", {
         user,
         token,
       });
     }
+
+    // Proceed to phone OTP verification
+    if (!phoneNumber || !phoneSuffix) {
+      return responseHandler(res, 400, "Phone number and suffix are required");
+    }
+    
+
+    const fullPhoneNumber = `${phoneSuffix}${phoneNumber}`;
+    console.log("Verifying phone number:", fullPhoneNumber);
+    
+    user = await User.findOne({ phoneNumber });
+    if (!user) {
+      return responseHandler(res, 404, "User not found");
+    }
+
+    const result = await verifyOtpToNumber(fullPhoneNumber, otp);
+    if (!result.valid) {
+      return responseHandler(res, 400, "Invalid or expired OTP");
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    const token = generateToken(user._id);
+    res.cookie("auth_token", token, {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+    });
+
+    console.log("Phone OTP verified successfully, token generated.");
+    return responseHandler(res, 200, "Phone OTP verified successfully", {
+      user,
+      token,
+    });
+
   } catch (error) {
     console.error("Error verifying OTP:", error);
     return responseHandler(res, 500, "Internal server error");
   }
 };
+
+
+export const updateProfile = async (req, res) => {
+  try {
+    const {username ,agreedToTerms, about } = req.body;
+    const userId = req.user._id;    // Assuming user ID is stored in req.user
+    const user = await User.findById(userId);
+    const file = req.file;   // Assuming you're using multer for file uploads
+    if(file) {
+      const uploadResult = 
+    }
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    return responseHandler(res, 500, "Internal server error");
+    
+  }
+}
