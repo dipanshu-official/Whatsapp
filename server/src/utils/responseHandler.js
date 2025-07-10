@@ -1,4 +1,4 @@
- const responseHandler = (res, statusCode, message, data = null) => {
+ export const responseHandler = (res, statusCode, message, data = null) => {
 
   if (!res) {
     console.error("Response object is not defined");

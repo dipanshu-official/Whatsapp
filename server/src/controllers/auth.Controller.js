@@ -8,6 +8,7 @@ import {
 } from "../services/twilioService.js";
 import { generateToken } from "../utils/generateToken.js";
 import cookieParser from "cookie-parser";
+import { uploadFileToCloudinary } from "../config/cloudinary.js";
 
 export const sendOtp = async (req, res) => {
   try {
@@ -91,11 +92,10 @@ export const verifyOtp = async (req, res) => {
     if (!phoneNumber || !phoneSuffix) {
       return responseHandler(res, 400, "Phone number and suffix are required");
     }
-    
 
     const fullPhoneNumber = `${phoneSuffix}${phoneNumber}`;
     console.log("Verifying phone number:", fullPhoneNumber);
-    
+
     user = await User.findOne({ phoneNumber });
     if (!user) {
       return responseHandler(res, 404, "User not found");
@@ -121,26 +121,52 @@ export const verifyOtp = async (req, res) => {
       user,
       token,
     });
-
   } catch (error) {
     console.error("Error verifying OTP:", error);
     return responseHandler(res, 500, "Internal server error");
   }
 };
 
-
 export const updateProfile = async (req, res) => {
   try {
-    const {username ,agreedToTerms, about } = req.body;
-    const userId = req.user._id;    // Assuming user ID is stored in req.user
+    console.log("Updating user profile with data:", req.user);
+    const { username, agreedToTerms, about } = req.body;
+    const userId = req.user.id; // Assuming user ID is stored in req.user
     const user = await User.findById(userId);
-    const file = req.file;   // Assuming you're using multer for file uploads
-    if(file) {
-      const uploadResult = 
+    if (!user) {
+      console.error("User not found with ID:", user);
+      return responseHandler(res, 404, "User not found");
     }
+    const file = req.file; // Assuming you're using multer for file uploads
+    if (file) {
+      const uploadResult = await uploadFileToCloudinary(file);
+      user.profilePicture = uploadResult?.secure_url;
+    } else if (req.body.profilePicture) {
+      user.profilePicture = req.body.profilePicture;
+    }
+    if (username !== undefined) user.username = username;
+    if (agreedToTerms !== undefined) user.agreedToTerms = agreedToTerms;
+    if (about !== undefined) user.about = about;
+    await user.save();
+    console.log("User profile updated successfully");
+    return responseHandler(res, 200, "Profile updated successfully", { user });
   } catch (error) {
     console.error("Error updating profile:", error);
     return responseHandler(res, 500, "Internal server error");
-    
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    res.clearCookie("auth_token", {
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: 0,
+    });
+    console.log("User logged out successfully");
+    return responseHandler(res, 200, "Logged out successfully");
+  } catch (error) {
+    console.error("Error logging out:", error);
+    return responseHandler(res, 500, "Internal server error");
   }
 }
