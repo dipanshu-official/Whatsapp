@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { logout, sendOtp , updateProfile, verifyOtp } from "../controllers/auth.Controller.js";
+import { getallUsers, logout, sendOtp , updateProfile, verifyOtp } from "../controllers/auth.Controller.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { multerMiddleware } from "../config/cloudinary.js";
+
 
 const router = Router();
 
@@ -15,6 +16,7 @@ router.post("/verify-otp", verifyOtp);
 // Protected route
 
 router.put("/update-profile", authMiddleware,multerMiddleware , updateProfile); 
+router.get("/getallUsers", authMiddleware, getallUsers); 
 
 router.get("/logout",logout)
 

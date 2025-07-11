@@ -1,4 +1,5 @@
 import User from "../models/user.Model.js";
+import Converstation from "../models/conversation.Molel.js";
 import otpGenerator from "../utils/otpGenerator.js";
 import responseHandler from "../utils/responseHandler.js";
 import { sendOtpToEmail } from "../services/emailService.js";
@@ -169,4 +170,73 @@ export const logout = async (req, res) => {
     console.error("Error logging out:", error);
     return responseHandler(res, 500, "Internal server error");
   }
-}
+};
+
+export const isAuthentic = async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming user ID is stored in req.user
+
+    if (!userId) {
+      console.error("User ID not found in request");
+      return responseHandler(res, 400, "User ID is required");
+    }
+    const user = await User.findById(userId);
+
+    if (!user) {
+      console.error("User not found with ID:", userId);
+      return responseHandler(res, 404, "User not found");
+    }
+    console.log("User profile retrieved successfully");
+    return responseHandler(res, 200, "User profile retrieved successfully", {
+      user,
+    });
+  } catch (error) {
+    console.error("Error retrieving user profile:", error);
+    return responseHandler(res, 500, "Internal server error");
+  }
+};
+
+export const getallUsers = async (req, res) => {
+  const loggedInUser = req.user?.id;
+
+  if (!loggedInUser) {
+    console.error("User ID not found in request");
+    return responseHandler(res, 400, "User ID is required");
+  }
+
+  try {
+    const users = await User.find({ _id: { $ne: loggedInUser } })
+      .select(
+        "username email phoneNumber profilePicture lastSeen isOnline about phoneSuffix"
+      )
+      .lean();
+
+    if (!users || users.length === 0) {
+      return responseHandler(res, 404, "No users found");
+    }
+    const userWithConversation = await Promise.all(
+      users.map(async (user) => {
+        const conversation = await Converstation.findOne({
+          participants: { $all: [user._id, loggedInUser] },
+        })
+          .populate({
+            path: "lastMessage",
+            select: "content createdAt sender receiver",
+          })
+          .lean();
+
+        return {
+          ...user,
+          conversation: conversation || null,
+        };
+      })
+    );
+
+    return responseHandler(res, 200, "All users retrieved successfully", {
+      users: userWithConversation,
+    });
+  } catch (error) {
+    console.error("Error retrieving all users:", error);
+    return responseHandler(res, 500, "Internal server error");
+  }
+};
