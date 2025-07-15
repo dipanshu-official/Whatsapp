@@ -5,13 +5,9 @@ import { uploadFileToCloudinary } from "../config/cloudinary.js";
 // Create a new status
 
 export const createStauts = async (req, res) => {
-  try {
+  try {content
     const {  content, contentType } = req.body;
     const file = req.file;
-
-    
-
-   
 
     let stautsUrl = null;
     
@@ -35,7 +31,6 @@ export const createStauts = async (req, res) => {
       sender: senderId,
       content,
       contentType,
-  
     });
 
     await newMessage.save();
